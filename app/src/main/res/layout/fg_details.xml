@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:transitionName="root"
+    android:id="@+id/nsv_root"
+    android:background="@color/white"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/ll_actionbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingVertical="10dp"
+            >
+            <ImageView
+                android:id="@+id/iv_close"
+                android:layout_width="wrap_content"
+                android:layout_marginStart="5dp"
+                android:layout_height="wrap_content"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                />
+
+            <ImageView
+                android:id="@+id/ivAvatar"
+                android:layout_marginStart="15dp"
+                android:layout_width="36dp"
+                android:transitionName="imageAvatar"
+                android:layout_height="36dp"
+                android:background="#9f9f9f"
+
+                />
+
+            <TextView
+                android:layout_marginStart="20dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Detail Title"
+                android:transitionName="textMain"
+                />
+        </LinearLayout>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:transitionName="imageMain"
+            android:layout_height="400dp">
+
+            <androidx.viewpager2.widget.ViewPager2
+                android:id="@+id/vp2"
+                android:layout_width="match_parent"
+                android:background="#eaeaea"
+                android:layout_height="match_parent"/>
+
+
+            <com.example.swipe2back.plaid.InkPageIndicator
+                android:layout_alignParentBottom="true"
+                android:layout_centerHorizontal="true"
+                android:id="@+id/indicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:pageIndicatorColor="@color/black"
+                android:layout_marginBottom="16dp"
+                app:currentPageIndicatorColor="@color/white" />
+        </RelativeLayout>
+
+
+        <LinearLayout
+            android:id="@+id/ll_comment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            >
+
+            <include layout="@layout/it_comment" />
+            <include layout="@layout/it_comment" />
+            <include layout="@layout/it_comment" />
+            <include layout="@layout/it_comment" />
+            <include layout="@layout/it_comment" />
+            <include layout="@layout/it_comment" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>
