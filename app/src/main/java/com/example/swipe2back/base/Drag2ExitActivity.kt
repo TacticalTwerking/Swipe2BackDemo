@@ -1,6 +1,7 @@
 package com.example.swipe2back.base
 
 import android.animation.ValueAnimator
+import android.content.res.Resources
 import android.graphics.Color
 import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
@@ -16,21 +17,27 @@ import com.example.swipe2back.R
 import kotlin.math.abs
 
 
-
-
 open abstract class Drag2ExitActivity : AppCompatActivity() {
 
-    private val RETURN_FACTOR = 250
+    data class IgnoredRegionExampt(var ltr:Boolean = false,var rtl:Boolean = false)
+
+    private val RETURN_FACTOR = 300
     private val ANIMATION_DURATION = 200L
     private var mLastMotionY: Float? = null
     private var mLastMotionX: Float? = null
-    private var mDragMode: Boolean = false
+    private var mDragLTRMode: Boolean = false
+    private var mSubContentDragMode: Boolean = false
     private var mScrollMode:Boolean = false
 
     private var mDownY: Float? = null
     private var mDownX: Float? = null
     private var mAnimationRunning = false
+    private var mSubContentAnimationRunning = false
     private lateinit var mContentView:View
+    private var mSubContentView:View? = null
+    private var mSubContentViewExpanded = false
+    private var mScreenWidth:Int = 0
+    private var mPressedInIgnore = false
 
 
     override fun setContentView(layoutResID: Int) {
@@ -47,13 +54,25 @@ open abstract class Drag2ExitActivity : AppCompatActivity() {
                 finishWithAnimation()
             }
         })
+        mScreenWidth = Resources.getSystem().displayMetrics.widthPixels
+    }
+
+
+    fun setSubContentView(v:View){
+        mSubContentView = v
+        mSubContentView!!.translationX = mScreenWidth.toFloat()
     }
 
     open fun enableDrag():Boolean{
-        return false
+        return true
     }
 
     open fun ignoredRegion(): Rect? {
+        return null
+    }
+
+
+    open fun ignoredExempt():IgnoredRegionExampt?{
         return null
     }
 
@@ -77,12 +96,12 @@ open abstract class Drag2ExitActivity : AppCompatActivity() {
      * See if we can scroll right because there might be some scrollable views(horizontal) that we don't want to interrupt.
      * to make sure any scrollable views inside of this activity were currently on the rightest
      */
-    private fun canScrollRight(): Boolean {
-        //eg: return mHorizontalScrollView.canScrollHorizontally(-1)
-        return true
-    }
-
-//    private fun canScrollRight(): Boolean {
+//    open fun canScrollRight(): Boolean {
+//        //eg: return mHorizontalScrollView.canScrollHorizontally(-1)
+//        return true
+//    }
+//
+//    open fun canScrollLeft(): Boolean {
 //        return true
 //    }
 //
@@ -103,7 +122,7 @@ open abstract class Drag2ExitActivity : AppCompatActivity() {
 
 
     private fun exitIfNeed() {
-        mDragMode = false
+        mDragLTRMode = false
         mAnimationRunning = true
         var exit = false
         if (null != mDownX && null != mLastMotionX) {
@@ -145,6 +164,56 @@ open abstract class Drag2ExitActivity : AppCompatActivity() {
     }
 
 
+    private fun snapToPosition() {
+        if (null == mSubContentView || null == mLastMotionX){
+            return
+        }
+        mSubContentDragMode = false
+        mSubContentAnimationRunning = true
+
+        println(">>> ${mLastMotionX!!} ${mDownX!!} ")
+        if (mSubContentViewExpanded) {
+            //exit subContent
+            if (mLastMotionX!! - mDownX!! > RETURN_FACTOR) {
+                mSubContentViewExpanded = false
+            }
+        } else {
+            //enter subContent
+            if (mDownX!! - mLastMotionX!! > RETURN_FACTOR) {
+                mSubContentViewExpanded = true
+            }
+        }
+
+        var toggle = false
+        if (abs(mDownX!! - mLastMotionX!!) > RETURN_FACTOR) {
+            toggle =true
+        }
+
+        if(toggle){
+            mSubContentViewExpanded = !mSubContentViewExpanded
+        }
+
+        val va = ValueAnimator.ofFloat(
+            mSubContentView!!.translationX,
+            if (mSubContentViewExpanded) 0F else mScreenWidth.toFloat()
+        )
+        va.interpolator = AccelerateDecelerateInterpolator()
+        va.duration = ANIMATION_DURATION //in millis
+        va.addUpdateListener { animation ->
+            val av = animation.animatedValue as Float
+            mSubContentView!!.translationX = av
+        }
+        va.doOnEnd {
+            mSubContentAnimationRunning = false
+            mDragLTRMode = false
+            mSubContentDragMode = false
+            mLastMotionY = null
+            mLastMotionX = null
+        }
+        va.start()
+    }
+
+
     /**
      * Transit contentview's offset to make it following the touching position
      */
@@ -161,52 +230,98 @@ open abstract class Drag2ExitActivity : AppCompatActivity() {
         mContentView.translationY = mContentView.translationY - offsetY
     }
 
+    private fun mkSubContentTransition(ev: MotionEvent) {
+        if (null==mSubContentView){
+            return
+        }
+        var offsetX = 0F
+        if (ev?.x != null && null != mLastMotionX) {
+            offsetX = mLastMotionX!! - ev.x
+        }
+        mSubContentView!!.translationX = mSubContentView!!.translationX - offsetX
+    }
+
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
 
-        if (!mAnimationRunning && enableDrag()) {
+        if (!mAnimationRunning && !mSubContentAnimationRunning) {
             if (ev?.action == MotionEvent.ACTION_DOWN) {
                 mLastMotionY = ev?.y
                 mLastMotionX = ev?.x
                 mDownX = ev?.x
                 mDownY = ev?.y
                 ignoredRegion()?.let{
-                    println("mDownY $mDownY ${it.top} ${it.bottom+it.top}")
-                    if(null!=mDownY && mDownY!! > it.top && mDownY!!< (it.bottom+it.top)){
-                        mScrollMode = true
+                    if(null==mDownX || null == mDownY){
+                        return@let
+                    }
+                    if(mDownY!! > it.top && mDownY!!< (it.bottom+it.top) && mDownX!! > it.left && mDownX!!< (it.left+it.right)){
+                        mPressedInIgnore = true
                     }
                 }
-
             }
 
             if (ev?.action == MotionEvent.ACTION_MOVE) {
-                if (mDragMode) {
-                    mkTransition(ev)
+                if(!mSubContentViewExpanded){
+                    if (mDragLTRMode) {
+                        mkTransition(ev)
+                    }else if(mSubContentDragMode){
+                        mkSubContentTransition(ev)
+                    }
+                }else{
+                    if(mDragLTRMode){
+                        mkSubContentTransition(ev)
+                    }
                 }
-                //Set to drag mode if distance of right-swipe reaching 100 pixels
-                if (canScrollRight() && !mScrollMode && null != mLastMotionX && null != mDownX && mLastMotionX!! - mDownX!! > 100) {
-                    mDragMode = true
+
+
+                if (null != mLastMotionX && null != mDownX && !mScrollMode) {
+                    //Set to drag mode if distance of right-swipe reaching 100 pixels
+                    if (mLastMotionX!! - mDownX!! > 150) {
+                        //LTR
+                        if (!mPressedInIgnore || (mPressedInIgnore && ignoredExempt()?.ltr == true)) {
+                            mDragLTRMode = true
+                        }
+                    }
+
+
+                    if (mLastMotionX!! - mDownX!! < -150) {
+                        //RTL
+                        if (!mPressedInIgnore || (mPressedInIgnore && ignoredExempt()?.rtl == true)) {
+                            mSubContentDragMode = true
+                        }
+                    }
                 }
+
+
                 //Prevent get into the drag mode when scrolling
-                if (null != mLastMotionY && null != mDownY && mLastMotionY!! - mDownY!! > 100) {
+                if (null != mLastMotionY && null != mDownY && abs(mLastMotionY!! - mDownY!!) > 100) {
                     mScrollMode = true
                 }
             }
 
             if (ev?.action == MotionEvent.ACTION_UP) {
                 mScrollMode = false
+                mPressedInIgnore = false
 
-                if (mDragMode) {
+                if (mDragLTRMode && !mSubContentViewExpanded) {
                     exitIfNeed()
+                }
+
+                if(mSubContentDragMode||mSubContentViewExpanded){
+                    snapToPosition()
                 }
             }
 
             mLastMotionY = ev?.y
             mLastMotionX = ev?.x
-            return if (mDragMode) false else super.dispatchTouchEvent(ev)
+            return if (mDragLTRMode || mSubContentDragMode) false else super.dispatchTouchEvent(ev)
         } else {
             return super.dispatchTouchEvent(ev)
         }
+
+    }
+
+    private fun enableSubContentDrag() {
 
     }
 

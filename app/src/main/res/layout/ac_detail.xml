@@ -1,39 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<com.example.swipe2back.widgets.FullDrawerLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/dl"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fitsSystemWindows="false">
+    android:layout_height="match_parent">
 
-    <!-- Layout to contain contents of main body of screen (drawer will slide over this) -->
     <include
+        android:id="@+id/item_detail"
         layout="@layout/fg_details"
         />
 
-    <!-- Container for contents of drawer - use NavigationView to make configuration easier -->
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/nv"
+    <LinearLayout
+        android:id="@+id/ll_usr_detail"
+        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_gravity="end"
-        android:fitsSystemWindows="true">
-        <RelativeLayout
-            android:background="@color/white"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+        android:translationX="2000dp"
+        >
+        <include
+            layout="@layout/ac_usr_detail"
+            />
+    </LinearLayout>
 
-            <TextView
-                android:layout_centerInParent="true"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Navigator"
-                />
-        </RelativeLayout>
 
-    </com.google.android.material.navigation.NavigationView>
 
-</com.example.swipe2back.widgets.FullDrawerLayout>
+</FrameLayout>
 
